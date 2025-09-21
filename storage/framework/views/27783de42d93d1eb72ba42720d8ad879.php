@@ -1,0 +1,100 @@
+
+
+<?php $__env->startSection('title', 'Purchase Order'); ?>
+
+<?php $__env->startSection('container'); ?>
+<div class="container mt-4">
+
+  
+  <?php if(session('success')): ?>
+    <div class="alert alert-success shadow-sm rounded"><?php echo e(session('success')); ?></div>
+  <?php endif; ?>
+  <?php if($errors->has('from')): ?>
+    <div class="alert alert-danger shadow-sm rounded"><?php echo e($errors->first('from')); ?></div>
+  <?php endif; ?>
+
+  
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-semibold text-dark mb-0">Purchase Order</h2>
+    <a href="<?php echo e(route('purchase.create')); ?>" class="btn btn-danger rounded-pill px-4">+ Create</a>
+  </div>
+
+  
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form action="<?php echo e(route('purchase.index')); ?>" method="GET" class="row g-2 align-items-center">
+        <div class="col-md-3">
+          <select name="supplier_id" class="form-select form-select-sm rounded-pill">
+            <option value="">-- All Suppliers --</option>
+            <?php $__currentLoopData = $suppliers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+              <option value="<?php echo e($supplier->supplierID); ?>" <?php echo e(request('supplier_id') == $supplier->supplierID ? 'selected' : ''); ?>>
+                <?php echo e($supplier->supplierName); ?>
+
+              </option>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <input type="month" name="from" class="form-control form-control-sm rounded-pill" value="<?php echo e(request('from')); ?>">
+        </div>
+        <div class="col-md-2">
+          <input type="month" name="to" class="form-control form-control-sm rounded-pill" value="<?php echo e(request('to')); ?>">
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">Filter</button>
+          <?php if(request('supplier_id') || request('from') || request('to')): ?>
+            <a href="<?php echo e(route('purchase.index')); ?>" class="btn btn-outline-secondary btn-sm rounded-pill">Reset</a>
+          <?php endif; ?>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle text-center shadow-sm">
+      <thead class="table-dark text-white">
+        <tr>
+          <th style="width: 5%;">Doc No</th>
+          <th style="width: 35%;">Supplier</th>
+          <th style="width: 20%;">Date</th>
+          <th style="width: 20%;">Total</th>
+          <th style="width: 20%;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php $__empty_1 = true; $__currentLoopData = $purchaseorders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $purchaseorder): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+        <tr>
+          <td><?php echo e(($purchaseorder->purchaseID)); ?></td>
+          <td><?php echo e($purchaseorder->supplier->supplierName ?? '-'); ?></td>
+          <td><?php echo e(\Carbon\Carbon::parse($purchaseorder->purchaseDate)->format('d-m-Y')); ?></td>
+          <td>Rp <?php echo e(number_format($purchaseorder->totalPrice, 0, ',', '.')); ?></td>
+          <td>
+            <a href="<?php echo e(route('purchase.show', $purchaseorder->purchaseID)); ?>" class="btn btn-sm btn-outline-primary rounded-pill">Detail</a>
+            <a href="<?php echo e(route('purchase.edit', $purchaseorder->purchaseID)); ?>" class="btn btn-sm btn-outline-warning rounded-pill">Edit</a>
+            <form action="<?php echo e(route('purchase.destroy', $purchaseorder->purchaseID)); ?>" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus purchase order ini?');">
+              <?php echo csrf_field(); ?>
+              <?php echo method_field('DELETE'); ?>
+              <button class="btn btn-sm btn-outline-danger rounded-pill">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+        <tr>
+          <td colspan="5" class="text-muted">No Purchase Order</td>
+        </tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+
+  
+  <div class="circle-pagination mt-4">
+    <?php echo e($purchaseorders->links('pagination::bootstrap-5')); ?>
+
+  </div>
+
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.main', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\nelse\Herd\skripsi\resources\views/purchase/index.blade.php ENDPATH**/ ?>

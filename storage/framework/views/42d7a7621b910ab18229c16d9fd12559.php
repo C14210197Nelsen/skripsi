@@ -1,0 +1,418 @@
+
+
+<?php $__env->startSection('title', 'Inventory'); ?>
+
+<?php $__env->startSection('container'); ?>
+
+<?php
+  $lowStockProducts = $products->filter(fn($product) => $product->getStock() <= $product->minStock);
+?>
+
+<?php if($lowStockProducts->count() > 0): ?>
+  <div class="alert alert-warning shadow-sm rounded-3">
+    <h6 class="mb-2 fw-semibold">⚠️ Produk dengan stok rendah:</h6>
+    <ul class="mb-0 ps-3">
+      <?php $__currentLoopData = $lowStockProducts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+        <li>
+          <span class="<?php echo e($product->getStock() <= 0 ? 'text-danger fw-bold' : ''); ?>">
+            <?php echo e($product->productName); ?> 
+            (Stok: <?php echo e($product->getStock()); ?> | Min: <?php echo e($product->minStock); ?>)
+          </span>
+        </li>
+      <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+    </ul>
+  </div>
+<?php endif; ?>
+
+<div class="container mt-4">
+
+  
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-semibold text-dark mb-0">Inventory</h2>
+    <div class="d-flex gap-2">
+      <a href="<?php echo e(route('inventory.deleted')); ?>" class="btn btn-outline-secondary btn-sm rounded-pill">Deleted</a>
+      <a href="<?php echo e(route('inventory.create')); ?>" class="btn btn-danger rounded-pill px-4">+ Create</a>
+    </div>
+  </div>
+
+  
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle text-center shadow-sm">
+      <thead class="table-dark text-white">
+        <tr>
+          <th style="width: 8%;">Kode Produk</th>
+          <th style="width: 40%;">Nama Produk / Varian</th>
+          <th style="width: 7%;">Harga</th>
+          <th style="width: 7%;">HPP</th>
+          <th style="width: 3%;">Stok</th>
+          <th style="width: 3%;">Min</th>
+          <th style="width: 25%;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+        <tr <?php if($product->getStock() <= $product->minStock): ?> class="table-warning" <?php endif; ?>>
+          <td style="white-space: normal; word-wrap: break-word; max-width: 100px;"><?php echo e($product->productCode); ?></td>
+          <td style="white-space: normal; word-wrap: break-word; max-width: 700px;" ><?php echo e($product->productName); ?></td>
+          <td>Rp <?php echo e(number_format($product->productPrice, 0, ',', '.')); ?></td>
+          <td>Rp <?php echo e(number_format($product->getHPP(), 0, ',', '.')); ?></td>
+          <td><?php echo e($product->getStock()); ?></td>
+          <td><?php echo e($product->minStock); ?></td>
+          <td class="justify-content-center gap-1 flex-wrap">
+            <a href="<?php echo e(route('stockledger.show', $product->productID)); ?>" class="btn btn-sm btn-outline-warning rounded-pill">Movement</a>
+
+            <button 
+                class="btn btn-sm btn-outline-info rounded-pill forecast-btn" 
+                data-product-id="<?php echo e($product->productID); ?>">
+                Forecast
+            </button>
+
+
+            <a href="<?php echo e(route('inventory.edit', $product->productID)); ?>" class="btn btn-sm btn-outline-primary rounded-pill">Edit</a>
+            <form action="<?php echo e(route('inventory.destroy', $product->productID)); ?>" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus produk ini?')">
+              <?php echo csrf_field(); ?>
+              <?php echo method_field('DELETE'); ?>
+              <button class="btn btn-sm btn-outline-danger rounded-pill">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- Modal Forecast -->
+
+<div class="modal fade" id="forecastModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Forecast Produk</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Loading / buffering -->
+        <div id="forecast-loading" class="text-center my-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p>Processing...</p>
+          <span id="forecast-status-text"></span>
+        </div>
+
+        <div id="forecastMessage"></div>
+
+
+        <!-- Konten forecast -->
+        <div id="forecast-content" style="display:none;">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <strong>Model Terbaik:</strong> <span id="forecast-model"></span><br>
+              <strong>MAE:</strong> <span id="forecast-mae"></span>
+            </div>
+            <div class="col-md-6 text-end">
+              <button id="btn-change-model" type="button" class="btn btn-warning btn-sm me-2">Change Model</button>
+              <button id="btn-run-forecast" type="button" class="btn btn-success btn-sm">Run Forecast</button>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <canvas id="forecastChart" height="150"></canvas>
+
+          <!-- Tabel Forecast -->
+          <table class="table table-sm table-bordered mt-3">
+            <thead>
+              <tr>
+                <th>Bulan</th>
+                <th>Quantity Forecast</th>
+              </tr>
+            </thead>
+            <tbody id="forecast-table">
+              <!-- Isi via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let chartInstance = null; 
+$(document).ready(function() {
+    // Tombol forecast diklik
+  $('.forecast-btn').click(function() {
+    const productID = $(this).data('product-id');
+
+    $('#forecastModal').data('product-id', productID);
+
+    $('#forecastModal').modal('show');
+    $('#forecast-loading').show();
+    $('#forecast-content').hide();
+
+    // Ambil data forecast terakhir via AJAX
+    $.get(`/forecast/${productID}`, function(res) {
+      if(res.status === 'success') {
+        if (res.isRunning) {
+          // Masih training → tampilkan loading dan status saja
+          $('#forecastMessage').html(
+            `<div class="alert alert-info">${res.message}</div>`
+          );
+          $('#forecast-loading').show();
+          $('#forecast-content').hide();
+          return; // stop supaya tidak render chart kosong
+        }
+
+
+        // Tampilkan pesan kalau ada
+        if (res.message) {
+          $('#forecastMessage').html(
+            `<div class="alert alert-warning">${res.message}</div>`
+          );
+        } else {
+          $('#forecastMessage').empty(); // hapus pesan kalau sudah ada model
+        }
+
+        // Tampilkan model & MAE
+        $('#forecast-model').text(`p=${res.model.p}, d=${res.model.d}, q=${res.model.q}`);
+        $('#forecast-mae').text(res.model.mae);
+
+        // Tampilkan tabel
+        const tbody = $('#forecast-table');
+        tbody.empty();
+        
+        res.forecast_next_2_months
+            .slice()
+            .reverse()
+            .forEach(f => {
+                // Hanya ambil tahun-bulan
+                const ym = f.month.slice(0,7); // '2025-09-01' → '2025-09'
+                tbody.append(`<tr><td>${ym}</td><td>${f.qty}</td></tr>`);
+            });
+
+
+        // Buat chart
+        const labels = res.chart.labels.map(l => l.slice(0,7));
+        const actual = res.chart.actual.map(v => v);
+        const forecast = res.chart.forecast.map(v => v);
+
+        // const actual = res.chart.actual.map(v => v === 0 ? null : v);   // ubah 0 jadi null
+        // const forecast = res.chart.forecast.map(v => (v === 0 ? null : v)); // ubah 0 jadi null
+
+
+        if(chartInstance) chartInstance.destroy();
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Actual', data: actual, borderColor:'black', tension:0.2 },
+              { label: 'Forecast', data: forecast, borderColor:'red', borderDash:[5,5], tension:0.2 },
+            ]
+          },
+          options: { responsive:true, plugins:{legend:{position:'top'}} }
+        });
+
+        $('#forecast-loading').hide();
+        $('#forecast-content').show();
+      } else {
+        alert(res.message);
+        $('#forecastModal').modal('hide');
+      }
+    });
+  });
+
+  $.ajaxSetup({
+      headers: {
+          'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+      }
+  });
+
+  // Tombol Change Model
+  $('#btn-change-model').click(function() {
+    const productID = $('#forecastModal').data('product-id');
+    $('#forecast-loading').show();
+    $('#forecast-content').hide();
+
+    // Trigger async job
+    $.post(`forecast/train_model/${productID}`, function(res) {
+        if(res.status === 'Queued') {
+            const jobId = res.job_id;
+            checkForecastJobStatus(jobId);
+        } else {
+            alert(res.message);
+        }
+    });
+
+
+    //$.post(`/train_model/${productID}`, function(res) {
+      //if(res.status === 'success') {
+        // Panggil ulang endpoint forecast untuk update modal
+        //$.get(`/forecast/${productID}`, function(data) {
+          // update modal dengan data baru
+         //updateForecastModal(data);
+        //});
+     // } else {
+       // alert(res.message);
+     // }
+    //});
+  });
+
+  // Tombol Run Forecast
+  $('#btn-run-forecast').click(function() {
+    const productID = $('#forecastModal').data('product-id');
+    $('#forecast-loading').show();
+    $('#forecast-content').hide();
+
+    $.post(`forecast/run_forecast/${productID}`, function(res) {
+      if(res.status === 'success') {
+        $.get(`/forecast/${productID}`, function(data) {
+          updateForecastModal(data);
+        });
+      } else {
+        alert(res.message);
+      }
+    });
+  });
+});
+
+function updateForecastModal(res) {
+  if(res.status === 'success') {
+
+    if (res.message) {
+      $('#forecastMessage').html(
+        `<div class="alert alert-warning">${res.message}</div>`
+      );
+    } else {
+      $('#forecastMessage').empty();
+    }
+
+    $('#forecast-model').text(`p=${res.model.p}, d=${res.model.d}, q=${res.model.q}`);
+    $('#forecast-mae').text(res.model.mae);
+
+    const tbody = $('#forecast-table');
+    tbody.empty();
+    res.forecast_next_2_months.slice().reverse().forEach(f => {
+      const ym = f.month.slice(0,7);
+      tbody.append(`<tr><td>${ym}</td><td>${f.qty}</td></tr>`);
+    });
+
+    // Destroy chart lama jika ada
+    if(chartInstance !== null) {
+      chartInstance.destroy();
+    }
+
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: res.chart.labels,
+        datasets: [
+          { label: 'Actual', data: res.chart.actual, borderColor:'black', tension:0.2 },
+          { label: 'Forecast', data: res.chart.forecast, borderColor:'red', borderDash:[5,5], tension:0.2 },
+        ]
+      },
+      options: { responsive:true, plugins:{legend:{position:'top'}} }
+    });
+
+    $('#forecast-loading').hide();
+    $('#forecast-content').show();
+  } else {
+    alert(res.message);
+    $('#forecastModal').modal('hide');
+  }
+}
+
+// function checkForecastJobStatus(jobId) {
+//     $.get(`/forecast/status/${jobId}`, function(res) {
+//         $('#forecast-status-text').text(`Training Status: ${res.status}`);
+
+//         if (res.status === 'Done') {
+//             // Ambil forecast terakhir setelah job selesai
+//             const productID = $('#forecastModal').data('product-id');
+//             $.get(`/forecast/${productID}`, function(data) {
+//                 // Validasi hasil di dalam payload
+//                 if (data.status === "error") {
+//                     $('#forecast-status-text').text(`Training Failed: ${data.message}`);
+//                     $('#forecast-loading').hide(); // sembunyikan spinner
+//                     $('#forecast-chart').hide();   // sembunyikan chart
+//                 } else {
+//                     updateForecastModal(data); // tampilkan chart
+//                 }
+//             });
+
+//         } else if (res.status === 'Pending' || res.status === 'Running') {
+//             setTimeout(() => checkForecastJobStatus(jobId), 2000);
+
+//         } else if (res.status === 'Error') {
+//             alert(res.message);
+//             $('#forecastModal').modal('hide');
+//         }
+//     });
+// }
+
+function checkForecastJobStatus(jobId) {
+
+  
+  $.get(`/forecast/status/${jobId}`, function(res) {
+    $('#forecast-status-text').text(`Training Status: ${res.status}`);
+
+    if (res.status === 'Done') {
+      // Jika job selesai DAN payload menyatakan error → tampilkan error & stop
+      if (res.hasError && res.result && res.result.message) {
+        // $('#forecastMessage').html(
+        //   `<div class="alert alert-danger">${res.result.message}</div>`
+        // );
+        alert(res.result.message);
+        $('#forecast-loading').hide();
+        $('#forecast-content').hide();
+        // opsional: hancurkan chart lama
+        if (window.chartInstance) { try { chartInstance.destroy(); } catch(e){} }
+        return; // JANGAN panggil /forecast kalau gagal
+      }
+
+      // Sukses → ambil data forecast terbaru
+      const productID = $('#forecastModal').data('product-id');
+      $.get(`/forecast/${productID}`, function(data) {
+        updateForecastModal(data);
+      });
+
+    } else if (res.status === 'Pending' || res.status === 'Running') {
+      setTimeout(() => checkForecastJobStatus(jobId), 2000);
+
+    } else if (res.status === 'Error') {
+      // Status job Error (bukan Done)
+      const msg = (res.hasResult && res.result && res.result.message)
+        ? res.result.message
+        : (res.message || 'Terjadi kesalahan saat training.');
+
+      $('#forecastMessage').html(`<div class="alert alert-danger">${msg}</div>`);
+      $('#forecast-loading').hide();
+      $('#forecast-content').hide();
+
+    } else if (res.status === 'not_found') {
+      $('#forecastMessage').html(
+        `<div class="alert alert-warning">Job tidak ditemukan.</div>`
+      );
+      $('#forecast-loading').hide();
+      $('#forecast-content').hide();
+    }
+  });
+}
+
+
+
+
+</script>
+
+
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.main', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\nelse\Herd\skripsi\resources\views/inventory/index.blade.php ENDPATH**/ ?>
