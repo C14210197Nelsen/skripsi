@@ -84,7 +84,7 @@ def main():
         best_mae=float("inf")
         best_order=None
         for p in range(16):
-            for d in range(5):
+            for d in range(4):
                 for q in range(16):
                     try:
                         print(f"Evaluating order: ({p},{d},{q})")
@@ -153,3 +153,4 @@ def main():
 
 if __name__=="__main__":
     main()
+
