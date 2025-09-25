@@ -260,7 +260,7 @@
                 @csrf
                 <button type="submit" class="btn btn-link text-danger fw-bold text-decoration-none p-0 me-3"
                         style="font-size: 1.25rem;">
-                    GwanGlobalDigital
+                    G2D
                 </button>
             </form>
 
@@ -293,5 +293,6 @@
 
 
   </body>
+
 
 </html>
