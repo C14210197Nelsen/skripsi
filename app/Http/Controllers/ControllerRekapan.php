@@ -18,6 +18,7 @@ class ControllerRekapan extends Controller {
         $salesData = DB::table('salesorder')
             ->whereYear('salesDate', $year)
             ->whereMonth('salesDate', $month)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->get();
 
@@ -27,6 +28,7 @@ class ControllerRekapan extends Controller {
         $purchaseData = DB::table('purchaseorder')
             ->whereYear('purchaseDate', $year)
             ->whereMonth('purchaseDate', $month)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->get();
 

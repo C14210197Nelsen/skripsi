@@ -15,6 +15,7 @@ class ControllerLaporan extends Controller {
         $pendapatan = DB::table('salesorder')
             ->whereMonth('salesDate', $bulan)
             ->whereYear('salesDate', $tahun)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->sum('totalPrice');
 
@@ -22,6 +23,7 @@ class ControllerLaporan extends Controller {
         $total_hpp = DB::table('salesorder')
             ->whereMonth('salesDate', $bulan)
             ->whereYear('salesDate', $tahun)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->sum('totalHPP');
 

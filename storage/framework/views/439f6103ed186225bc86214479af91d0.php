@@ -185,22 +185,18 @@
 
 </div>
 
-<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Bootstrap Datepicker CSS & JS -->
 <link rel="stylesheet" 
       href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js"></script>
 
-<!-- Aktifkan Monthpicker -->
 <script>
 $(function() {
     $('.monthpicker').datepicker({
-        format: "yyyy-mm",      // hasil: 2025-08
-        startView: "months",    // buka langsung mode bulan
-        minViewMode: "months",  // hanya bulan & tahun
-        autoclose: true,        // otomatis close setelah pilih
+        format: "yyyy-mm",    
+        startView: "months",    
+        minViewMode: "months",  
+        autoclose: true,        
         todayHighlight: true
     });
 });

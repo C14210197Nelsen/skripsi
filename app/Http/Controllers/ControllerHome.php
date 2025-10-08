@@ -21,12 +21,14 @@ class ControllerHome extends Controller {
         $totalSales = DB::table('salesorder')
             ->whereMonth('salesDate', $bulan)
             ->whereYear('salesDate', $tahun)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->sum('totalPrice');
 
         $orderCount = DB::table('salesorder')
             ->whereMonth('salesDate', $bulan)
             ->whereYear('salesDate', $tahun)
+            ->where('isDelivered', 1)
             ->where('status', 1)
             ->count();
 
@@ -50,6 +52,7 @@ class ControllerHome extends Controller {
             ->join('salesorder as so', 'sd.SalesOrder_salesID', '=', 'so.salesID')
             ->whereMonth('so.salesDate', $bulan)
             ->whereYear('so.salesDate', $tahun)
+            ->where('so.isDelivered', 1)
             ->where('so.status', 1)
             ->sum('sd.quantity');
 
@@ -68,6 +71,7 @@ class ControllerHome extends Controller {
             )
             ->whereMonth('so.salesDate', $bulan)
             ->whereYear('so.salesDate', $tahun)
+            ->where('so.isDelivered', 1)
             ->where('so.status', 1)
             ->where('p.status', 1)
             ->groupBy('p.productName')
@@ -82,6 +86,7 @@ class ControllerHome extends Controller {
         $salesBulanLalu = DB::table('salesorder')
             ->whereMonth('salesDate', $bulanLalu)
             ->whereYear('salesDate', $tahunLalu)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->sum('totalPrice');
 
@@ -93,6 +98,7 @@ class ControllerHome extends Controller {
         $totalPurchase = DB::table('purchaseorder')
             ->whereMonth('purchaseDate', $bulan)
             ->whereYear('purchaseDate', $tahun)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->sum('totalPrice');
 
@@ -106,6 +112,7 @@ class ControllerHome extends Controller {
             )
             ->whereMonth('po.purchaseDate', $bulan)
             ->whereYear('po.purchaseDate', $tahun)
+            ->where('po.isReceived', 1)
             ->where('po.status', 1)
             ->where('p.status', 1)
             ->groupBy('p.productName')
@@ -136,12 +143,14 @@ class ControllerHome extends Controller {
         $totalProfit = DB::table('salesorder')
             ->whereMonth('salesDate', $bulan)
             ->whereYear('salesDate', $tahun)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->sum('totalProfit');
 
         $profitYTD = DB::table('salesorder')
             ->select(DB::raw('MONTH(salesDate) as bulan'), DB::raw('SUM(totalProfit) as total'))
             ->whereYear('salesDate', $tahun)
+            ->where('isPaid', 1)
             ->where('status', 1)
             ->groupBy('bulan')
             ->orderBy('bulan')
@@ -186,7 +195,7 @@ class ControllerHome extends Controller {
             ->join('product as p', 'sd.Product_productID', '=', 'p.productID')
             ->select(
                 'p.productName',
-                DB::raw('SUM(sd.subtotal - (sd.cost * sd.quantity)) as total_margin')
+                DB::raw('SUM(sd.subtotal - (sd.cost)) as total_margin')
             )
             ->whereMonth('so.salesDate', $bulan)
             ->whereYear('so.salesDate', $tahun)

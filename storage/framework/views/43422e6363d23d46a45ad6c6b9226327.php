@@ -10,8 +10,7 @@
       <a href="<?php echo e(route('inventory.create')); ?>" class="btn btn-danger rounded-pill px-4">+ Create</a>
     </div>
   </div>
-
-
+  
 <table class="table table-bordered">
     <thead CLASS= "table-dark text-center">
       <tr>

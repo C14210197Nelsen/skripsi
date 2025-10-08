@@ -21,29 +21,99 @@
     @csrf
 @method('PUT')
 
-    {{-- Supplier --}}
-    <div class="mb-3">
-      <label for="supplier" class="form-label">Supplier</label>
-        <select name="supplier_id" id="supplier" class="form-select" required>
-          <option value="">-- Choose supplier --</option>
+  <div class="row">
+    {{-- Kolom kiri (Supplier + Date) --}}
+    <div class="col-md-3">
+      <div class="mb-3">
+        <label for="supplier" class="form-label">Supplier</label>
+        <input list="supplierList"
+              id="supplier"
+              class="form-control"
+              value="{{ old('supplier_name', $purchaseorder->supplier->supplierName ?? '') }}"
+              required>
+
+        <datalist id="supplierList">
           @foreach($suppliers as $supplier)
-            <option value="{{ $supplier->supplierID }}"
-              {{ old('supplier_id', $purchaseorder->Supplier_supplierID) == $supplier->supplierID ? 'selected' : '' }}>
-              {{ $supplier->supplierName }}{{ $supplier->status == 0 ? ' (Nonactive)' : '' }}
+            <option data-id="{{ $supplier->supplierID }}" value="{{ $supplier->supplierName }}">
+              {{ $supplier->supplierName }}
             </option>
           @endforeach
-        </select>
 
+          {{-- Jika supplier lama nonaktif, tetap tampilkan --}}
+          @if(isset($purchaseorder->supplier) && !$suppliers->contains('supplierID', $purchaseorder->supplier->supplierID))
+            <option data-id="{{ $purchaseorder->supplier->supplierID }}"
+                    value="{{ $purchaseorder->supplier->supplierName }}">
+              {{ $purchaseorder->supplier->supplierName }} (Inactive)
+            </option>
+          @endif
+        </datalist>
+
+        <input type="hidden" name="supplier_id"
+              id="supplier_id"
+              value="{{ old('supplier_id', $purchaseorder->Supplier_supplierID ?? '') }}">
+      </div>
+
+      <div class="mb-3">
+        <label for="purchaseDate" class="form-label">Date</label>
+        <input type="date" name="purchaseDate" id="purchaseDate"
+              class="form-control"
+              value="{{ old('purchaseDate', \Carbon\Carbon::parse($purchaseorder->purchaseDate)->format('Y-m-d')) }}">
+      </div>
     </div>
 
-    <div class="mb-3">
-      <label for="salesDate" class="form-label">Date</label>
-      <input type="date" name="purchaseDate" id="purcaseDate" class="form-control" value="{{ old('purchaseDate', \Carbon\Carbon::parse($purchaseorder->purchaseDate)->format('Y-m-d')) }}">
+    {{-- Kolom tengah (Received & Paid) --}}
+    <div class="col-md-3">
+      {{-- Received --}}
+      <div class="row mb-3 align-items-center">
+        <div class="col-4">
+          <label for="isReceived" class="form-label">Received?</label>
+          <select name="isReceived" id="isReceived" class="form-control">
+            <option value="0" {{ old('isReceived', $purchaseorder->isReceived) == 0 ? 'selected' : '' }}>No</option>
+            <option value="1" {{ old('isReceived', $purchaseorder->isReceived) == 1 ? 'selected' : '' }}>Yes</option>
+          </select>
+        </div>
+        <div class="col-8">
+          <label class="form-label">Received At</label>
+          <input type="datetime-local" id="received_at_display" class="form-control"
+                value="{{ old('received_at', optional($purchaseorder->received_at)->format('Y-m-d\TH:i')) }}" disabled>
+          <input type="hidden" name="received_at" id="received_at"
+                value="{{ old('received_at', optional($purchaseorder->received_at)->format('Y-m-d\TH:i')) }}">
+        </div>
+      </div>
+
+      {{-- Paid --}}
+      <div class="row mb-3 align-items-center">
+        <div class="col-4">
+          <label for="isPaid" class="form-label">Paid?</label>
+          <select name="isPaid" id="isPaid" class="form-control">
+            <option value="0" {{ old('isPaid', $purchaseorder->isPaid) == 0 ? 'selected' : '' }}>No</option>
+            <option value="1" {{ old('isPaid', $purchaseorder->isPaid) == 1 ? 'selected' : '' }}>Yes</option>
+          </select>
+        </div>
+        <div class="col-8">
+          <label class="form-label">Paid At</label>
+          <input type="datetime-local" id="paid_at_display" class="form-control"
+                value="{{ old('paid_at', optional($purchaseorder->paid_at)->format('Y-m-d\TH:i')) }}" disabled>
+          <input type="hidden" name="paid_at" id="paid_at"
+                value="{{ old('paid_at', optional($purchaseorder->paid_at)->format('Y-m-d\TH:i')) }}">
+        </div>
+      </div>
     </div>
 
+    {{-- Kolom kanan (Description) --}}
+    <div class="col-md-6">
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea name="description" maxlength="100" class="form-control" rows="5">{{ old('description', $purchaseorder->description) }}</textarea>
+      </div>
+    </div>
+  </div>
 
+
+
+  
     <hr class="my-4">
-    <h5 class="text-black">Product</h5>
+    <h5 class="text-black">Line Items</h5>
 
 
     @php
@@ -62,20 +132,28 @@
       @foreach($oldProducts as $item)
       @php $index = $loop->index; @endphp 
       <div class="row mb-2 product-item">
-        <div class="col-md-3">
-          <input list="productCodes" name="products[{{ $index }}][productCode]" class="form-control product-code"
-            placeholder="Product Code" value="{{ $item['productCode'] ?? '' }}" required readonly>
+        <div class="row mb-2 fw-bold">
+          <div class="col-md-3">Product</div>
+          <div class="col-md-2">Qty</div>
+          <div class="col-md-2">Buy Price</div>
+          <div class="col-md-2">Subtotal</div>
         </div>
-        <div class="col-md-2">
-          <input type="number" name="products[{{ $index }}][quantity]" class="form-control quantity"
-            placeholder="Qty" value="{{ ($item['quantity'] ?? 0) - ($item['returned'] ?? 0) }}" min="0" required>
-        </div>
-        <div class="col-md-2">
-          <input type="number" name="products[{{ $index }}][cost]" class="form-control cost"
-            placeholder="Price" value="{{ $item['cost'] ?? '' }}" min="0" required readonly>
-        </div>
-        <div class="col-md-2">
-          <input type="text" class="form-control subtotal" placeholder="Subtotal" disabled>
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <input list="productCodes" name="products[{{ $index }}][productCode]" class="form-control product-code"
+              placeholder="Product Code" value="{{ $item['productCode'] ?? '' }}" required readonly>
+          </div>
+          <div class="col-md-2">
+            <input type="number" name="products[{{ $index }}][quantity]" class="form-control quantity"
+              placeholder="Qty" value="{{ ($item['quantity'] ?? 0) - ($item['returned'] ?? 0) }}" min="0" required>
+          </div>
+          <div class="col-md-2">
+            <input type="number" name="products[{{ $index }}][cost]" class="form-control cost"
+              placeholder="Buy Price" value="{{ $item['cost'] ?? '' }}" min="0" required readonly>
+          </div>
+          <div class="col-md-2">
+            <input type="text" class="form-control subtotal" placeholder="Subtotal" disabled>
+          </div>
         </div>
 
         <p>
@@ -118,20 +196,28 @@ document.getElementById('add-product').addEventListener('click', function () {
   container.className = 'row mb-2 product-item';
 
   container.innerHTML = `
-    <div class="col-md-3">
-      <input list="productCodes" name="products[${productIndex}][productCode]" class="form-control product-code"
-        placeholder="Product Code" required>
+    <div class="row mb-2 fw-bold">
+      <div class="col-md-3">Product</div>
+      <div class="col-md-2">Qty</div>
+      <div class="col-md-2">Buy Price</div>
+      <div class="col-md-2">Subtotal</div>
     </div>
-    <div class="col-md-2">
-      <input type="number" name="products[${productIndex}][quantity]" class="form-control quantity"
-        placeholder="Qty" min="1" required>
-    </div>
-    <div class="col-md-2">
-      <input type="number" name="products[${productIndex}][cost]" class="form-control cost"
-        placeholder="Price" min="0" required>
-    </div>
-    <div class="col-md-2">
-      <input type="text" class="form-control subtotal" placeholder="Subtotal" disabled>
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <input list="productCodes" name="products[${productIndex}][productCode]" class="form-control product-code"
+          placeholder="Product Code" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" name="products[${productIndex}][quantity]" class="form-control quantity"
+          placeholder="Qty" min="1" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" name="products[${productIndex}][cost]" class="form-control cost"
+          placeholder="Buy Price" min="0" required>
+      </div>
+      <div class="col-md-2">
+        <input type="text" class="form-control subtotal" placeholder="Subtotal" disabled>
+      </div>
     </div>
 
     <p>
@@ -200,6 +286,95 @@ document.querySelectorAll('.product-item').forEach(row => {
   subtotalInput.value = qty * cost;
 
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+  const input = document.getElementById('supplier');
+  const hidden = document.getElementById('supplier_id');
+  const datalist = document.getElementById('supplierList');
+
+  input.addEventListener('input', function () {
+    const option = [...datalist.options].find(opt => opt.value === input.value);
+    hidden.value = option ? option.dataset.id : '';
+  });
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+  function pad(num) {
+    return num.toString().padStart(2, '0');
+  }
+
+  function getLocalDateTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  function toggleDateField(selectId, displayId, hiddenId) {
+    const select = document.getElementById(selectId);
+    const displayInput = document.getElementById(displayId);
+    const hiddenInput = document.getElementById(hiddenId);
+
+    function update() {
+      if (select.value == "1") {
+        const formatted = getLocalDateTime();
+        displayInput.value = formatted;
+        hiddenInput.value = formatted;
+      } else {
+        displayInput.value = "";
+        hiddenInput.value = "";
+      }
+    }
+
+    select.addEventListener('change', update);
+  }
+
+  toggleDateField('isReceived', 'received_at_display', 'received_at');
+  toggleDateField('isPaid', 'paid_at_display', 'paid_at');
+});
+
+function toggleReadOnlyByReceived() {
+  const isReceived = document.getElementById('isReceived').value === "1";
+
+  // Semua input
+  const allInputs = document.querySelectorAll('input, select, textarea, button');
+
+  allInputs.forEach(el => {
+    if (
+      el.id === 'isReceived' || 
+      el.id === 'isPaid' || 
+      el.name === 'description' || 
+      el.type === 'hidden' ||
+      el.closest('.d-flex') // supaya tombol Back/Save tetap aktif
+    ) return;
+
+    if (isReceived) {
+      if (el.tagName === 'SELECT' || el.tagName === 'BUTTON') {
+        el.disabled = true;
+      } else {
+        el.readOnly = true;
+      }
+    } else {
+      if (el.tagName === 'SELECT' || el.tagName === 'BUTTON') {
+        el.disabled = false;
+      } else {
+        el.readOnly = false;
+      }
+    }
+  });
+
+  document.querySelectorAll('a.btn, button[type="submit"]').forEach(el => {
+    el.disabled = false;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", toggleReadOnlyByReceived);
+// document.getElementById("isReceived").addEventListener("change", toggleReadOnlyByReceived);
+
+
 </script>
 @endsection
 

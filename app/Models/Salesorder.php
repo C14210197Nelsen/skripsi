@@ -40,20 +40,49 @@ class Salesorder extends Model {
 		'totalProfit' => 'int',
 		'discount_order' => 'int',
 		'status' => 'bool',
+		'isDelivered' => 'boolean', 
+		'deliveredAt' => 'datetime',
+		'isPaid' => 'boolean',
+		'paidAt' => 'datetime',
 		'Customer_customerID' => 'int',
-		'description' => 'string'
+		'description' => 'string',
+		'Reference' => 'string',
+		'amount_paid' => 'decimal:2',
+    	'change_amount' => 'decimal:2',
 	];
 
 	protected $fillable = [
 		'salesDate',
 		'Customer_customerID',
 		'status',
+	    'isDelivered',
+		'deliveredAt',
+		'isPaid',
+		'paidAt',
 		'discount_order',
 		'description',
 		'totalPrice',
 		'totalHPP',
 		'totalProfit',
+		'Reference',
+		'payment_type',
+    	'amount_paid',
+    	'change_amount',
+		
 	];
+
+	protected static function booted() {
+        static::saving(function ($salesOrder) {
+            // Auto isi deliveredAt saat isDelivered diubah jadi 1
+			if ($salesOrder->isDirty('isDelivered') && $salesOrder->isDelivered == 1 && !$salesOrder->deliveredAt) {
+				$salesOrder->deliveredAt = now();
+			}
+
+			if ($salesOrder->isDirty('isPaid') && $salesOrder->isPaid == 1 && !$salesOrder->paidAt) {
+				$salesOrder->paidAt = now();
+			}
+        });
+    }
 
 
 	public function customer() {

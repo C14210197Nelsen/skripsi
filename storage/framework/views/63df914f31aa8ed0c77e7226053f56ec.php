@@ -4,7 +4,7 @@
 <div class="container-fluid">
     <h3 class="mb-4">Dashboard</h3>
 
-    <!-- Filter Bulan & Tahun -->
+    
     <form method="GET" action="<?php echo e(route('home')); ?>" class="row g-2 mb-4">
         <div class="col-auto">
             <select name="bulan" class="form-select form-select-sm">
@@ -28,7 +28,7 @@
         </div>
     </form>
 
-    <!-- ===== Sales KPI ===== -->
+    
     <div class="row">
         <div class="col-md-4">
             <div class="card border-dark shadow-sm mb-3">
@@ -60,7 +60,7 @@
     </div>
 
 
-    <!-- ===== Sales Detail ===== -->
+    
     <div class="row">
         <div class="col-md-6">
             <div class="card border-dark shadow-sm mb-3">
@@ -121,7 +121,7 @@
     </div>
 
 
-    <!-- ===== Forecasting ===== -->
+    
     <div class="row">
         <div class="col-md-6">
             <div class="card border-light shadow-sm mb-3">
@@ -180,7 +180,7 @@
         </div>
     </div>
 
-    <!-- ===== Inventory ===== -->
+    
     <div class="row">
         <div class="col-md-6">
             <div class="card border-dark shadow-sm mb-3">

@@ -23,6 +23,7 @@
   <div class="card shadow-sm mb-4">
     <div class="card-body">
       <form action="{{ route('purchase.index') }}" method="GET" class="row g-2 align-items-center">
+        {{-- Supplier --}}
         <div class="col-md-3">
           <select name="supplier_id" class="form-select form-select-sm rounded-pill">
             <option value="">-- All Suppliers --</option>
@@ -33,15 +34,39 @@
             @endforeach
           </select>
         </div>
+
+        {{-- From --}}
         <div class="col-md-2">
           <input type="month" name="from" class="form-control form-control-sm rounded-pill" value="{{ request('from') }}">
         </div>
+
+        {{-- To --}}
         <div class="col-md-2">
           <input type="month" name="to" class="form-control form-control-sm rounded-pill" value="{{ request('to') }}">
         </div>
+
+        {{-- Received --}}
+        <div class="col-md-1">
+          <select name="isReceived" class="form-select form-select-sm rounded-pill">
+            <option value="">Received?</option>
+            <option value="1" {{ request('isReceived') === '1' ? 'selected' : '' }}>Received</option>
+            <option value="0" {{ request('isReceived') === '0' ? 'selected' : '' }}>Not Received</option>
+          </select>
+        </div>
+
+        {{-- Paid --}}
+        <div class="col-md-1">
+          <select name="isPaid" class="form-select form-select-sm rounded-pill">
+            <option value="">Paid?</option>
+            <option value="1" {{ request('isPaid') === '1' ? 'selected' : '' }}>Paid</option>
+            <option value="0" {{ request('isPaid') === '0' ? 'selected' : '' }}>Unpaid</option>
+          </select>
+        </div>
+
+        {{-- Button --}}
         <div class="col-md-2 d-flex gap-2">
           <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">Filter</button>
-          @if(request('supplier_id') || request('from') || request('to'))
+          @if(request('supplier_id') || request('from') || request('to') || request('isReceived') !== null || request('isPaid') !== null)
             <a href="{{ route('purchase.index') }}" class="btn btn-outline-secondary btn-sm rounded-pill">Reset</a>
           @endif
         </div>
@@ -49,24 +74,42 @@
     </div>
   </div>
 
+
   {{-- Tabel --}}
   <div class="table-responsive">
     <table class="table table-striped table-hover align-middle text-center shadow-sm">
       <thead class="table-dark text-white">
         <tr>
-          <th style="width: 5%;">Doc No</th>
-          <th style="width: 35%;">Supplier</th>
-          <th style="width: 20%;">Date</th>
-          <th style="width: 20%;">Total</th>
+          <th style="width: 10%;">Doc No</th>
+          <th style="width: 25%;">Supplier</th>
+          <th style="width: 15%;">Date</th>
+          <th style="width: 15%;">Status</th>
+          <th style="width: 15%;">Total</th>
           <th style="width: 20%;">Action</th>
         </tr>
       </thead>
       <tbody>
         @forelse($purchaseorders as $purchaseorder)
         <tr>
-          <td>{{ ($purchaseorder->purchaseID) }}</td>
+          <td>{{ $purchaseorder->purchaseID }}</td>
           <td>{{ $purchaseorder->supplier->supplierName ?? '-' }}</td>
           <td>{{ \Carbon\Carbon::parse($purchaseorder->purchaseDate)->format('d-m-Y') }}</td>
+
+          {{-- Status Column --}}
+          <td>
+            @if($purchaseorder->isReceived)
+              <span class="badge bg-success">Received</span>
+            @else
+              <span class="badge bg-warning">Not Received</span>
+            @endif
+
+            @if($purchaseorder->isPaid)
+              <span class="badge bg-success">Paid</span>
+            @else
+              <span class="badge bg-danger">Unpaid</span>
+            @endif
+          </td>
+
           <td>Rp {{ number_format($purchaseorder->totalPrice, 0, ',', '.') }}</td>
           <td>
             <a href="{{ route('purchase.show', $purchaseorder->purchaseID) }}" class="btn btn-sm btn-outline-primary rounded-pill">Detail</a>
@@ -80,7 +123,7 @@
         </tr>
         @empty
         <tr>
-          <td colspan="5" class="text-muted">No Purchase Order</td>
+          <td colspan="6" class="text-muted">No Purchase Order</td>
         </tr>
         @endforelse
       </tbody>

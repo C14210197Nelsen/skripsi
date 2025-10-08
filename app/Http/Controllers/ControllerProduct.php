@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\StockLedger;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class ControllerProduct extends Controller {
@@ -39,10 +40,10 @@ class ControllerProduct extends Controller {
     public function store(Request $request) {
         $validated = $request->validate([
             'productCode' => 'required|string|max:16|unique:product,productCode',
-            'productName' => 'required|string|max:255',
+            'productName' => 'required|string|max:255|unique:product,productName',
             'productPrice' => 'required|integer|max:9999999999',
             'productCost' => 'required|integer|max:9999999999',
-            'productType' => 'nullable|string|max:8',
+            'LeadTime' => 'nullable|integer|max:365',
             'stock' => 'nullable|integer',
             'minStock' => 'nullable|integer',
             'status' => 'required|boolean'
@@ -50,6 +51,7 @@ class ControllerProduct extends Controller {
 
         $validated['stock'] = $request->filled('stock') ? (int) $request->stock : 0;
         $validated['minStock'] = $request->filled('minStock') ? (int) $request->minStock : 0;
+        $validated['LeadTime'] = $request->filled('LeadTime') ? (int) $request->LeadTime : 7;
 
         $product = Product::create($validated);
 
@@ -84,10 +86,10 @@ class ControllerProduct extends Controller {
     public function update(Request $request, Product $product) {
         $validated = $request->validate([
             'productCode' => 'required|string|max:16|unique:product,productCode,' . $product->productID . ',productID',
-            'productName' => 'required|string|max:255',
+            'productName' => 'required|string|max:255|unique:product,productName,' . $product->productID . ',productID',
             'productPrice' => 'required|integer',
             'productCost' => 'integer',
-            'productType' => 'nullable|string|max:8',
+            'LeadTime' => 'nullable|integer|max:365',
             'stock' => 'integer',
             'minStock' => 'nullable|integer',
             'status' => 'required|boolean'
@@ -127,7 +129,7 @@ class ControllerProduct extends Controller {
             'productName'   => $request->productName,
             'productPrice'  => $request->productPrice,
             'productCost'   => $newCost,
-            'productType'   => $request->productType,
+            'LeadTime'      => $request->has('LeadTime') ? $request->LeadTime : 7,
             'stock'         => $newStock,
             'minStock'      => $request->has('minStock') ? (int) $request->minStock : $product->minStock,
             'status'        => $request->status,
@@ -142,6 +144,34 @@ class ControllerProduct extends Controller {
 
         return redirect()->route('inventory.index')->with('success', 'Produk berhasil dinonaktifkan.');
     }
+
+    public function shortage() {
+        $startNextMonth = now()->addMonthNoOverflow()->startOfMonth();
+        $endNextMonth = now()->addMonthNoOverflow()->endOfMonth();
+
+        $shortageProducts = DB::table('sales_forecast as sf')
+            ->join('product as p', 'sf.productID', '=', 'p.productID')
+            ->select(
+                'p.productID',
+                'p.productCode',
+                'p.productName',
+                'p.stock',
+                'sf.forecast_quantity'
+            )
+            ->where('p.status', 1)
+            ->whereBetween('sf.forecast_month', [$startNextMonth, $endNextMonth])
+            ->whereColumn('sf.forecast_quantity', '>', 'p.stock')
+            ->get();
+
+
+        return view('inventory.shortage', [
+            'title' => 'Inventory Shortage',
+            'user' => auth()->user()->name ?? 'Nama',
+            'shortageProducts' => $shortageProducts
+        ]);
+    }
+
+
 
 
 }

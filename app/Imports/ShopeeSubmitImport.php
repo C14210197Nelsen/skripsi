@@ -42,6 +42,8 @@ class ShopeeSubmitImport implements
     private const COL_QTY_ORDER   = 'jumlah';
     private const COL_QTY_CANCEL  = 'returned_quantity';
     private const PRICE_KEYS      = ['harga_setelah_diskon'];
+    private const COL_DELIVERED_AT = 'waktu_pengiriman_diatur';
+    private const COL_PAID_AT      = 'waktu_pembayaran_dilakukan';
 
 
     public function __construct() {
@@ -68,6 +70,21 @@ class ShopeeSubmitImport implements
             $rawDate = $row[self::COL_DATE_DONE] ?? null;
             $salesDate = $this->parseDate($rawDate); // Y-m-d
             if (!$salesDate) continue;
+
+            $rawDelivered = $row[self::COL_DELIVERED_AT] ?? null;
+            $rawPaid      = $row[self::COL_PAID_AT] ?? null;
+
+            $deliveredAt = $this->parseDate($rawDelivered);
+            $paidAt      = $this->parseDate($rawPaid);
+
+            if (!isset($this->bufferOrders[$orderNo])) {
+                $this->bufferOrders[$orderNo] = [
+                    'salesDate'   => $salesDate,
+                    'deliveredAt' => $deliveredAt,
+                    'paidAt'      => $paidAt,
+                    'items'       => [],
+                ];
+            }
 
             // Ambil field produk, variasi, qty, price
             $productName = trim((string)($row[self::COL_PRODUCT] ?? ''));
@@ -170,14 +187,39 @@ class ShopeeSubmitImport implements
 
         foreach ($orders as $orderNo => $order) {
             Log::info("[IMPORT SHOPEE] Mulai simpan order: " . $orderNo, $order);
+
+            // ✅ Cek apakah sudah ada SO dengan description mengandung "No. Pesanan: $orderNo"
+            $exists = Salesorder::where('status', 1)
+                ->where('Reference', $orderNo)
+                ->exists();
+
+            if ($exists) {
+                Log::warning("[IMPORT SHOPEE] Skip order $orderNo, sudah pernah diimport");
+
+                // 👉 Simpan ke daftar failedOrders biar bisa ditampilkan
+                $this->failedOrders[]  = $orderNo;
+                $this->failedDetails[] = "Pesanan $orderNo dilewati karena sudah pernah diimport.";
+
+                continue; // skip, jangan buat SO lagi
+            }
+
             DB::beginTransaction();
             try {
                 $salesOrder = Salesorder::create([
                     'salesDate'           => $order['salesDate'],
                     'Customer_customerID' => $this->customer->customerID,
                     'status'              => 1,
-                    'description'         => 'No. Pesanan: ' . $orderNo,
+                    'Reference'           => $orderNo,
+                    'description'         => null, // opsional, atau isi variasi saja
+                    // Delivery
+                    'isDelivered' => 1,
+                    'deliveredAt' => $order['deliveredAt'],
+
+                    // Payment
+                    'isPaid' => 1,
+                    'paidAt' => $order['paidAt'],
                 ]);
+
 
                 $totalPrice = 0.0;
                 $totalHPP   = 0.0;
@@ -252,7 +294,8 @@ class ShopeeSubmitImport implements
                     'totalPrice'  => $totalPrice,
                     'totalHPP'    => $totalHPP,
                     'totalProfit' => $totalPrice - $totalHPP,
-                    'description' => "No. Pesanan: $orderNo | Variasi: " . implode(', ', array_unique(array_filter($variations))),
+                    'description' => "Variasi: " . implode(', ', array_unique(array_filter($variations))),
+                    'Reference'   => $orderNo,
                 ]);
 
                 DB::commit();

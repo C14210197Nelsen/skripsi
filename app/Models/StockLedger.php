@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class StockLedger extends Model {
     protected $table = 'stock_ledger';
@@ -30,6 +31,14 @@ class StockLedger extends Model {
 
     public function product() {
         return $this->belongsTo(Product::class, 'productID', 'productID');
+    }
+
+    protected static function booted() {
+        static::created(function ($ledger) {
+            DB::table('product')
+                ->where('productID', $ledger->productID)
+                ->update(['stock' => $ledger->saldo_qty]);
+        });
     }
 }
     

@@ -46,11 +46,12 @@ def main():
 
         # Query SQL Ambil model terakhir ARIMA
         cursor.execute("""
-        SELECT p,d,q,MAE FROM sales_forecast
+        SELECT p,d,q,MAE,MAPE,avg_sales FROM sales_forecast
         WHERE productID=%s AND forecast_quantity IS NULL
         ORDER BY updated_at DESC LIMIT 1
         """,(product_id,))
         model_row=cursor.fetchone()
+
 
         # if not model_row: 
         #     try:
@@ -89,7 +90,10 @@ def main():
         #     except Exception as e:
         #         raise Exception(str(e))
 
-        p,d,q,mae=model_row["p"],model_row["d"],model_row["q"],model_row.get("MAE",0)
+        p, d, q = model_row["p"], model_row["d"], model_row["q"]
+        mae = model_row.get("MAE", 0)
+        mape = model_row.get("MAPE", 0)
+        avg_sales = model_row.get("avg_sales", 0)
 
         # Query SQL Ambil data sales produk tertentu
         cursor.execute("""
@@ -97,7 +101,7 @@ def main():
                    SUM(d.quantity) AS jumlah
             FROM salesorder s
             JOIN salesdetail d ON s.salesID=d.SalesOrder_salesID
-            WHERE d.Product_productID=%s
+            WHERE d.Product_productID=%s and s.status = 1
             GROUP BY bulan ORDER BY bulan
         """, (product_id,))
         df = pd.DataFrame(cursor.fetchall())
@@ -111,18 +115,30 @@ def main():
         last_txn_month = df["bulan"].max()
         now_month = pd.Timestamp.today().to_period("M").to_timestamp()
 
-        gap = (now_month.year - last_txn_month.year) * 12 + (now_month.month - last_txn_month.month)
-        if gap >= 3:
-            raise Exception("Produk tidak terjual selama 3 bulan terakhir, forecasting tidak dapat dilakukan.")
+        # gap = (now_month.year - last_txn_month.year) * 12 + (now_month.month - last_txn_month.month)
+        # if gap >= 3:
+        #     raise Exception("Produk tidak terjual selama 3 bulan terakhir, forecasting tidak dapat dilakukan.")
     
         # Preprocessing data
-        df["jumlah"] = pd.to_numeric(df["jumlah"],errors="coerce").fillna(0)
-        df["bulan"] = pd.to_datetime(df["bulan"],errors="coerce")
-        df = df.dropna(subset=["bulan"]).sort_values("bulan")
+        df["bulan"] = pd.to_datetime(df["bulan"], errors="coerce")
+        df["jumlah"] = pd.to_numeric(df["jumlah"], errors="coerce").fillna(0)
+
+        # Buat range bulan lengkap dari transaksi pertama sampai bulan sekarang
+        all_months = pd.date_range(start=df["bulan"].min(),
+                                end=now_month,
+                                freq="MS")  # Month Start
+        
+        df = df.set_index("bulan").reindex(all_months).fillna(0).rename_axis("bulan").reset_index()
         y = df.set_index("bulan")["jumlah"].astype(float)
 
-        # Forecast 2 bulan ke belakang
-        steps_back = 5
+        # Cek apakah 3 bulan terakhir kosong semua
+        last_3_months = y[-5:]
+        if (last_3_months == 0).all():
+            raise Exception("Produk tidak terjual selama 3 bulan terakhir, forecasting tidak dapat dilakukan.")
+
+
+        # Forecast 3 bulan ke belakang
+        steps_back = 3
         if len(y) <= steps_back:
             raise Exception("Data tidak cukup untuk backtesting")
         y_train_back = y.iloc[:-steps_back]
@@ -132,26 +148,56 @@ def main():
         forecast_back = model_back.forecast(steps=steps_back)
         forecast_back = [max(0, round(float(f))) for f in forecast_back]
 
+        # Simpan hasil backward ke database
+        for idx, fcst in zip(y_test_back.index, forecast_back):
+            forecast_month = idx.strftime("%Y-%m-01")
+            cursor.execute("""
+                INSERT INTO sales_forecast (productID, forecast_month, forecast_quantity, p, d, q, MAE, MAPE, avg_sales)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    forecast_quantity=VALUES(forecast_quantity),
+                    p=VALUES(p), d=VALUES(d), q=VALUES(q),
+                    MAE=VALUES(MAE), MAPE=VALUES(MAPE), avg_sales=VALUES(avg_sales),
+                    updated_at=NOW()
+            """, (product_id, forecast_month, fcst, p, d, q, mae, mape, avg_sales))
+        db.commit()
+
+
+        # Ambil LeadTime produk
+        cursor.execute("SELECT LeadTime FROM product WHERE productID=%s", (product_id,))
+        prod_row = cursor.fetchone()
+        if not prod_row:
+            raise Exception("Produk tidak ditemukan")
+        leadtime = prod_row.get("LeadTime") or 0
+
+        # Tentukan horizon forecast berdasarkan LeadTime
+        if leadtime <= 60:
+            steps_forward = 2
+        else:
+            # Rumus: tiap tambahan 30 hari di atas 60 → tambah 1 bulan forecast
+            steps_forward = 2 + math.ceil((leadtime - 60) / 30)
+
         # Forecast 2 bulan ke depan (mirip train_model)
         model_forward  = ARIMA(y, order=(p,d,q)).fit()  # fit model penuh
-        forecast_forward_values = model_forward.forecast(steps=2)
+        forecast_forward_values = model_forward.forecast(steps=steps_forward)
 
         last_date = y.index.max()
         forecasts_forward = []
         for i, fcst in enumerate(forecast_forward_values, start=1):
             forecast_qty = max(0, round(float(fcst)))
-            forecast_month = (last_date + relativedelta(months=i)).strftime("%Y-%m-01")
+            forecast_month = (now_month + relativedelta(months=i)).strftime("%Y-%m-01")
             forecasts_forward.append({"month": forecast_month, "qty": forecast_qty})
 
             # Simpan ke DB
             cursor.execute("""
-            INSERT INTO sales_forecast (productID, forecast_month, forecast_quantity, p, d, q, MAE)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO sales_forecast (productID, forecast_month, forecast_quantity, p, d, q, MAE, MAPE, avg_sales)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 forecast_quantity=VALUES(forecast_quantity),
-                p=VALUES(p), d=VALUES(d), q=VALUES(q), MAE=VALUES(MAE),
+                p=VALUES(p), d=VALUES(d), q=VALUES(q),
+                MAE=VALUES(MAE), MAPE=VALUES(MAPE), avg_sales=VALUES(avg_sales),
                 updated_at=NOW()
-            """, (product_id, forecast_month, forecast_qty, p, d, q, mae))
+            """, (product_id, forecast_month, forecast_qty, p, d, q, mae, mape, avg_sales))
         db.commit()
 
         # Grafik
@@ -192,7 +238,14 @@ def main():
         output = {
             "status": "success",
             "productID": product_id,
-            "model": {"p": p, "d": d, "q": q, "mae": mae},
+            "model": {
+                "p": p,
+                "d": d,
+                "q": q,
+                "mae": mae,
+                "mape": mape,
+                "avg_sales": avg_sales
+            },
             "forecast_next_2_months": forecasts_forward,
             "forecast_last_2_months": [{"month":str(idx.date()), "qty": val} for idx,val in zip(back_index, forecast_back)],
             "chart": {

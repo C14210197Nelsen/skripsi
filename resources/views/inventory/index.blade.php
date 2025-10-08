@@ -31,6 +31,7 @@
     <h2 class="fw-semibold text-dark mb-0">Inventory</h2>
     <div class="d-flex gap-2">
       <a href="{{ route('inventory.deleted') }}" class="btn btn-outline-secondary btn-sm rounded-pill">Deleted</a>
+      <a href="{{ route('inventory.shortage') }}" class="btn btn-warning rounded-pill px-4">Shortage</a>
       <a href="{{ route('inventory.create') }}" class="btn btn-danger rounded-pill px-4">+ Create</a>
     </div>
   </div>
@@ -63,7 +64,8 @@
 
             <button 
                 class="btn btn-sm btn-outline-info rounded-pill forecast-btn" 
-                data-product-id="{{ $product->productID }}">
+                data-product-id="{{ $product->productID }}"
+                data-product-code="{{ $product->productCode }}">
                 Forecast
             </button>
 
@@ -105,13 +107,17 @@
         {{-- Forecast --}}
         <div id="forecast-content" style="display:none;">
           <div class="row mb-3">
-            <div class="col-md-6">
-              <strong>Model Terbaik:</strong> <span id="forecast-model"></span><br>
-              <strong>MAE:</strong> <span id="forecast-mae"></span>
+            <div><strong>Model Terbaik:</strong> <span id="forecast-model"></span></div><br>
+            <div class="col-md-6 d-flex gap-4">
+              <div><strong>MAE:</strong> <span id="forecast-mae"></span></div>
+              <div><strong>MAPE:</strong> <span id="forecast-mape"></span></div>
+              <div><strong>MEAN:</strong> <span id="forecast-avg"></span></div>
             </div>
             <div class="col-md-6 text-end">
-              <button id="btn-change-model" type="button" class="btn btn-warning btn-sm me-2">Change Model</button>
-              <button id="btn-run-forecast" type="button" class="btn btn-success btn-sm">Run Forecast</button>
+              @if(Auth::user()->role == 'Owner')
+                <button id="btn-change-model" type="button" class="btn btn-warning btn-sm me-2">Change Model</button>
+                <button id="btn-run-forecast" type="button" class="btn btn-success btn-sm">Run Forecast</button>
+              @endif
             </div>
           </div>
 
@@ -148,8 +154,12 @@ $(document).ready(function() {
   // Tombol forecast diklik
   $('.forecast-btn').click(function() {
     const productID = $(this).data('product-id');
+    const productCode = $(this).data('product-code');
 
     $('#forecastModal').data('product-id', productID);
+
+    // set title di sini
+    $('#forecastModal .modal-title').text('Forecast [' + productCode + ']');
 
     $('#forecastModal').modal('show');
     $('#forecast-loading').show();
@@ -181,6 +191,9 @@ $(document).ready(function() {
         // Tampilkan model & MAE
         $('#forecast-model').text(`p=${res.model.p}, d=${res.model.d}, q=${res.model.q}`);
         $('#forecast-mae').text(res.model.mae);
+        $('#forecast-mape').text(res.model.mape ? res.model.mape + " %" : "-");
+        $('#forecast-avg').text(res.model.avg_sales ?? "-");
+
 
         // Tampilkan tabel
         const tbody = $('#forecast-table');
@@ -296,6 +309,9 @@ function updateForecastModal(res) {
 
     $('#forecast-model').text(`p=${res.model.p}, d=${res.model.d}, q=${res.model.q}`);
     $('#forecast-mae').text(res.model.mae);
+    $('#forecast-mape').text(res.model.mape ? res.model.mape + " %" : "-");
+    $('#forecast-avg').text(res.model.avg_sales ?? "-");
+
 
     const tbody = $('#forecast-table');
     tbody.empty();

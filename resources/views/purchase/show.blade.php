@@ -11,19 +11,43 @@
   <div class="card shadow-sm mb-4">
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
           <h6 class="text-muted mb-1">Supplier</h6>
           <p class="fw-medium">{{ $purchaseorder->supplier->supplierName }}</p>
         </div>
-        <div class="col-md-6">
-          <h6 class="text-muted mb-1">Date</h6>
+        <div class="col-md-3">
+          <h6 class="text-muted mb-1">Purchase Date</h6>
           <p class="fw-medium">{{ \Carbon\Carbon::parse($purchaseorder->purchaseDate)->format('d-m-Y') }}</p>
         </div>
+        <div class="col-md-3">
+          <h6 class="text-muted mb-1">Received Date</h6>
+          <p class="fw-medium">
+            {{ $purchaseorder->receivedAt 
+                ? \Carbon\Carbon::parse($purchaseorder->receivedAt)->format('d-m-Y') 
+                : '-' }}
+          </p>
+        </div>
+        <div class="col-md-3">
+          <h6 class="text-muted mb-1">Paid Date</h6>
+          <p class="fw-medium">
+            {{ $purchaseorder->paidAt 
+                ? \Carbon\Carbon::parse($purchaseorder->paidAt)->format('d-m-Y') 
+                : '-' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
         <div class="col-md-6">
+          <h6 class="text-muted mb-1">Description</h6>
+          <p class="fw-medium">{{ $purchaseorder->description ?? '-' }}</p>
+        </div>
+        <div class="col-md-3">
           <h6 class="text-muted mb-1">Total Price</h6>
           <p class="fw-medium text-danger">Rp {{ number_format($purchaseorder->totalPrice, 0, ',', '.') }}</p>
         </div>
       </div>
+
     </div>
   </div>
 

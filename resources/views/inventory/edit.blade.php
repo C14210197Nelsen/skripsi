@@ -44,9 +44,9 @@
 
 
     <div class="mb-3">
-      <label for="productType" class="form-label">Type</label>
-      <input type="text" class="form-control" id="productType" name="productType"
-        value="{{ old('productType', $product->productType) }}" maxlength="8">
+      <label for="LeadTime" class="form-label">Lead Time (Day)</label>
+      <input type="number" class="form-control" id="LeadTime" name="LeadTime"
+        value="{{ old('LeadTime', $product->LeadTime) }}" maxlength="365">
     </div>
 
     <div class="mb-3">

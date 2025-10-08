@@ -31,6 +31,7 @@
     <h2 class="fw-semibold text-dark mb-0">Inventory</h2>
     <div class="d-flex gap-2">
       <a href="<?php echo e(route('inventory.deleted')); ?>" class="btn btn-outline-secondary btn-sm rounded-pill">Deleted</a>
+      <a href="<?php echo e(route('inventory.shortage')); ?>" class="btn btn-warning rounded-pill px-4">Shortage</a>
       <a href="<?php echo e(route('inventory.create')); ?>" class="btn btn-danger rounded-pill px-4">+ Create</a>
     </div>
   </div>
@@ -63,7 +64,8 @@
 
             <button 
                 class="btn btn-sm btn-outline-info rounded-pill forecast-btn" 
-                data-product-id="<?php echo e($product->productID); ?>">
+                data-product-id="<?php echo e($product->productID); ?>"
+                data-product-code="<?php echo e($product->productCode); ?>">
                 Forecast
             </button>
 
@@ -83,7 +85,6 @@
 </div>
 
 
-<!-- Modal Forecast -->
 
 <div class="modal fade" id="forecastModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -93,7 +94,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <!-- Loading / buffering -->
+        
         <div id="forecast-loading" class="text-center my-4">
           <div class="spinner-border text-primary" role="status"></div>
           <p>Processing...</p>
@@ -103,23 +104,27 @@
         <div id="forecastMessage"></div>
 
 
-        <!-- Konten forecast -->
+        
         <div id="forecast-content" style="display:none;">
           <div class="row mb-3">
-            <div class="col-md-6">
-              <strong>Model Terbaik:</strong> <span id="forecast-model"></span><br>
-              <strong>MAE:</strong> <span id="forecast-mae"></span>
+            <div><strong>Model Terbaik:</strong> <span id="forecast-model"></span></div><br>
+            <div class="col-md-6 d-flex gap-4">
+              <div><strong>MAE:</strong> <span id="forecast-mae"></span></div>
+              <div><strong>MAPE:</strong> <span id="forecast-mape"></span></div>
+              <div><strong>MEAN:</strong> <span id="forecast-avg"></span></div>
             </div>
             <div class="col-md-6 text-end">
-              <button id="btn-change-model" type="button" class="btn btn-warning btn-sm me-2">Change Model</button>
-              <button id="btn-run-forecast" type="button" class="btn btn-success btn-sm">Run Forecast</button>
+              <?php if(Auth::user()->role == 'Owner'): ?>
+                <button id="btn-change-model" type="button" class="btn btn-warning btn-sm me-2">Change Model</button>
+                <button id="btn-run-forecast" type="button" class="btn btn-success btn-sm">Run Forecast</button>
+              <?php endif; ?>
             </div>
           </div>
 
-          <!-- Chart -->
+          
           <canvas id="forecastChart" height="150"></canvas>
 
-          <!-- Tabel Forecast -->
+          
           <table class="table table-sm table-bordered mt-3">
             <thead>
               <tr>
@@ -128,7 +133,7 @@
               </tr>
             </thead>
             <tbody id="forecast-table">
-              <!-- Isi via JS -->
+              
             </tbody>
           </table>
         </div>
@@ -146,17 +151,21 @@
 <script>
 let chartInstance = null; 
 $(document).ready(function() {
-    // Tombol forecast diklik
+  // Tombol forecast diklik
   $('.forecast-btn').click(function() {
     const productID = $(this).data('product-id');
+    const productCode = $(this).data('product-code');
 
     $('#forecastModal').data('product-id', productID);
+
+    // set title di sini
+    $('#forecastModal .modal-title').text('Forecast [' + productCode + ']');
 
     $('#forecastModal').modal('show');
     $('#forecast-loading').show();
     $('#forecast-content').hide();
 
-    // Ambil data forecast terakhir via AJAX
+    // Ambil forecast terakhir via AJAX
     $.get(`/forecast/${productID}`, function(res) {
       if(res.status === 'success') {
         if (res.isRunning) {
@@ -170,7 +179,7 @@ $(document).ready(function() {
         }
 
 
-        // Tampilkan pesan kalau ada
+        // Pesan kalau ada
         if (res.message) {
           $('#forecastMessage').html(
             `<div class="alert alert-warning">${res.message}</div>`
@@ -182,6 +191,9 @@ $(document).ready(function() {
         // Tampilkan model & MAE
         $('#forecast-model').text(`p=${res.model.p}, d=${res.model.d}, q=${res.model.q}`);
         $('#forecast-mae').text(res.model.mae);
+        $('#forecast-mape').text(res.model.mape ? res.model.mape + " %" : "-");
+        $('#forecast-avg').text(res.model.avg_sales ?? "-");
+
 
         // Tampilkan tabel
         const tbody = $('#forecast-table');
@@ -192,7 +204,8 @@ $(document).ready(function() {
             .reverse()
             .forEach(f => {
                 // Hanya ambil tahun-bulan
-                const ym = f.month.slice(0,7); // '2025-09-01' → '2025-09'
+                // '2025-09-01' → '2025-09'
+                const ym = f.month.slice(0,7); 
                 tbody.append(`<tr><td>${ym}</td><td>${f.qty}</td></tr>`);
             });
 
@@ -296,6 +309,9 @@ function updateForecastModal(res) {
 
     $('#forecast-model').text(`p=${res.model.p}, d=${res.model.d}, q=${res.model.q}`);
     $('#forecast-mae').text(res.model.mae);
+    $('#forecast-mape').text(res.model.mape ? res.model.mape + " %" : "-");
+    $('#forecast-avg').text(res.model.avg_sales ?? "-");
+
 
     const tbody = $('#forecast-table');
     tbody.empty();
@@ -373,12 +389,12 @@ function checkForecastJobStatus(jobId) {
         alert(res.result.message);
         $('#forecast-loading').hide();
         $('#forecast-content').hide();
-        // opsional: hancurkan chart lama
+        
         if (window.chartInstance) { try { chartInstance.destroy(); } catch(e){} }
-        return; // JANGAN panggil /forecast kalau gagal
+        return; 
       }
 
-      // Sukses → ambil data forecast terbaru
+      // Ambil data forecast terbaru (jika sukses)
       const productID = $('#forecastModal').data('product-id');
       $.get(`/forecast/${productID}`, function(data) {
         updateForecastModal(data);

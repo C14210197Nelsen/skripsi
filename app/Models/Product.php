@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $productName
  * @property int $productPrice
  * @property int $productCost
- * @property string $productType
+ * @property string $LeadTime
  * @property int|null $stock
  * @property int|null $minStock
  * @property bool|null $status
@@ -47,7 +47,7 @@ class Product extends Model {
 		'productName',
 		'productPrice',
 		'productCost',
-		'productType',
+		'LeadTime',
 		'status',
 		'minStock',
 		'stock'

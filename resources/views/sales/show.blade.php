@@ -19,13 +19,29 @@
   <div class="card shadow-sm mb-4">
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-3">
           <h6 class="text-muted mb-1">Customer</h6>
           <p class="fw-medium">{{ $salesorder->customer->customerName }}</p>
         </div>
-        <div class="col-md-6">
-          <h6 class="text-muted mb-1">Date</h6>
-          <p class="fw-medium">{{ \Carbon\Carbon::parse($salesorder->salesDate)->format('d-m-Y') }}</p>
+        <div class="col-md-3">
+          <h6 class="text-muted mb-1">Sales Date</h6>
+          <p class="fw-medium">
+            {{ $salesorder->salesDate ? \Carbon\Carbon::parse($salesorder->salesDate)->format('d-m-Y') : '' }}
+          </p>
+        </div>
+
+        <div class="col-md-3">
+          <h6 class="text-muted mb-1">Delivered At</h6>
+          <p class="fw-medium">
+            {{ $salesorder->deliveredAt ? \Carbon\Carbon::parse($salesorder->deliveredAt)->format('d-m-Y') : '' }}
+          </p>
+        </div>
+
+        <div class="col-md-3">
+          <h6 class="text-muted mb-1">Paid At</h6>
+          <p class="fw-medium">
+            {{ $salesorder->paidAt ? \Carbon\Carbon::parse($salesorder->paidAt)->format('d-m-Y') : '' }}
+          </p>
         </div>
 
         <div class="col-md-3">
@@ -48,10 +64,16 @@
 
       <hr class="my-3">
 
-      <div class="mt-2">
-        <h6 class="text-muted mb-1">Description</h6>
-        <p class="fw-medium">{{ $salesorder->description ?? '-' }}</p>
-      </div>
+      <div class="row mt-2">
+        <div class="col-md-2">
+          <h6 class="text-muted mb-1">Reference</h6>
+          <p class="fw-medium">{{ $salesorder->Reference ?? '-' }}</p>
+        </div>
+        <div class="col-md-10">
+          <h6 class="text-muted mb-1">Description</h6>
+          <p class="fw-medium">{{ $salesorder->description ?? '-' }}</p>
+        </div>
+    </div>
 
     </div>
   </div>

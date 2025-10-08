@@ -35,6 +35,8 @@ class ControllerForecast extends Controller {
                         'd' => null,
                         'q' => null,
                         'mae' => null,
+                        'mape' => null,
+                        'avg_sales' => null,
                     ],
                     'forecast_next_2_months' => [],
                     'forecast_last_2_months' => [],
@@ -63,6 +65,8 @@ class ControllerForecast extends Controller {
                         'd' => null,
                         'q' => null,
                         'mae' => null,
+                        'mape' => null,
+                        'avg_sales' => null,
                     ],
                     'forecast_next_2_months' => [],
                     'forecast_last_2_months' => [],
@@ -76,20 +80,109 @@ class ControllerForecast extends Controller {
                 ]);
             }
 
-            // run_forecast.py
-            $process = new Process([
-                $this->pythonPath,
-                base_path('forecasting/run_forecast.py'),
-                $productID
-            ]);
-            $process->run();
 
-            if (!$process->isSuccessful()) {
-                throw new ProcessFailedException($process);
+            // Hitung jumlah bulan forecast ke depan
+            $leadtime = \DB::table('product')
+                ->where('productID', $productID)
+                ->value('leadtime');
+
+            $forwardMonths = ($leadtime <= 60) ? 2 : ceil($leadtime / 30);
+
+            // Hitung batas maksimal bulan forecast yang akan ditampilkan
+            $maxForecastMonth = \Carbon\Carbon::now()->addMonths($forwardMonths)->format('Y-m');
+
+
+            // Ambil data forecast
+            $forecastRows = \DB::table('sales_forecast')
+                ->where('productID', $productID)
+                ->whereNotNull('forecast_quantity')
+                ->whereRaw("DATE_FORMAT(forecast_month, '%Y-%m') <= ?", [$maxForecastMonth])
+                ->orderBy('forecast_month')
+                ->get();
+
+            // Ambil data aktual
+            $actualRows = \DB::table('salesorder as s')
+                ->join('salesdetail as d', 's.salesID', '=', 'd.SalesOrder_salesID')
+                ->selectRaw("DATE_FORMAT(s.salesDate, '%Y-%m') as bulan, SUM(d.quantity) as jumlah")
+                ->where('d.Product_productID', $productID)
+                ->where('s.status', 1)
+                ->groupBy('bulan')
+                ->orderBy('bulan')
+                ->get()
+                ->take(-12);
+
+            $currentMonth = date('Y-m');
+
+            $labels = $actualRows->pluck('bulan')
+                ->map(fn($b) => substr($b, 0, 7)) // potong YYYY-MM dari actual
+                ->merge(
+                    $forecastRows->pluck('forecast_month')->map(fn($b) => substr($b, 0, 7)) // potong YYYY-MM dari forecast
+                )
+                ->unique()
+                ->sort()
+                ->values();
+
+
+            $actual = [];
+            $forecast = [];
+
+            foreach ($labels as $bulan) {
+                $act = $actualRows->firstWhere('bulan', $bulan);
+                $for = $forecastRows->first(function ($r) use ($bulan) {
+                    return substr($r->forecast_month, 0, 7) === $bulan;
+                });
+
+                // jika bulan actual > bulan saat ini, tampilkan null
+                if ($bulan > date('Y-m')) {
+                    $actual[] = null;
+                } else {
+                    $actual[] = $act ? (float) $act->jumlah : 0;
+                }
+
+                $forecast[] = $for ? (float) $for->forecast_quantity : null;
             }
 
-            $data = json_decode($process->getOutput(), true);
-            $output = $data;
+            // Ambil backward & forward forecast saja
+            $forecastLast = $forecastRows->sortBy('forecast_month')->take(3)->map(function ($r) {
+                return [
+                    'month' => $r->forecast_month,
+                    'qty' => $r->forecast_quantity
+                ];
+            })->values();
+
+            $forecastNext = $forecastRows->sortByDesc('forecast_month')->take($forwardMonths)->map(function ($r) {
+                return [
+                    'month' => $r->forecast_month,
+                    'qty' => $r->forecast_quantity
+                ];
+            })->values();
+
+            // Output akhir
+            $output = [
+                'status' => 'success',
+                'productID' => (int) $productID,
+                'model' => [
+                    'p' => $model->p,
+                    'd' => $model->d,
+                    'q' => $model->q,
+                    'mae' => $model->MAE,
+                    'mape' => $model->MAPE,
+                    'avg_sales' => $model->avg_sales,
+                ],
+                'forecast_next_2_months' => $forecastNext,
+                'forecast_last_2_months' => $forecastLast,
+                'chart' => [
+                    'labels' => $labels,
+                    'actual' => $actual,
+                    'forecast' => $forecast,
+                ],
+                'message' => null,
+                'isRunning' => false
+            ];
+
+
+
+
         } catch (\Exception $e) {
             $output['message'] = $e->getMessage();
         }

@@ -23,6 +23,7 @@
   <div class="card shadow-sm mb-4">
     <div class="card-body">
       <form action="<?php echo e(route('purchase.index')); ?>" method="GET" class="row g-2 align-items-center">
+        
         <div class="col-md-3">
           <select name="supplier_id" class="form-select form-select-sm rounded-pill">
             <option value="">-- All Suppliers --</option>
@@ -34,15 +35,39 @@
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
           </select>
         </div>
+
+        
         <div class="col-md-2">
           <input type="month" name="from" class="form-control form-control-sm rounded-pill" value="<?php echo e(request('from')); ?>">
         </div>
+
+        
         <div class="col-md-2">
           <input type="month" name="to" class="form-control form-control-sm rounded-pill" value="<?php echo e(request('to')); ?>">
         </div>
+
+        
+        <div class="col-md-1">
+          <select name="isReceived" class="form-select form-select-sm rounded-pill">
+            <option value="">Received?</option>
+            <option value="1" <?php echo e(request('isReceived') === '1' ? 'selected' : ''); ?>>Received</option>
+            <option value="0" <?php echo e(request('isReceived') === '0' ? 'selected' : ''); ?>>Not Received</option>
+          </select>
+        </div>
+
+        
+        <div class="col-md-1">
+          <select name="isPaid" class="form-select form-select-sm rounded-pill">
+            <option value="">Paid?</option>
+            <option value="1" <?php echo e(request('isPaid') === '1' ? 'selected' : ''); ?>>Paid</option>
+            <option value="0" <?php echo e(request('isPaid') === '0' ? 'selected' : ''); ?>>Unpaid</option>
+          </select>
+        </div>
+
+        
         <div class="col-md-2 d-flex gap-2">
           <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">Filter</button>
-          <?php if(request('supplier_id') || request('from') || request('to')): ?>
+          <?php if(request('supplier_id') || request('from') || request('to') || request('isReceived') !== null || request('isPaid') !== null): ?>
             <a href="<?php echo e(route('purchase.index')); ?>" class="btn btn-outline-secondary btn-sm rounded-pill">Reset</a>
           <?php endif; ?>
         </div>
@@ -50,24 +75,42 @@
     </div>
   </div>
 
+
   
   <div class="table-responsive">
     <table class="table table-striped table-hover align-middle text-center shadow-sm">
       <thead class="table-dark text-white">
         <tr>
-          <th style="width: 5%;">Doc No</th>
-          <th style="width: 35%;">Supplier</th>
-          <th style="width: 20%;">Date</th>
-          <th style="width: 20%;">Total</th>
+          <th style="width: 10%;">Doc No</th>
+          <th style="width: 25%;">Supplier</th>
+          <th style="width: 15%;">Date</th>
+          <th style="width: 15%;">Status</th>
+          <th style="width: 15%;">Total</th>
           <th style="width: 20%;">Action</th>
         </tr>
       </thead>
       <tbody>
         <?php $__empty_1 = true; $__currentLoopData = $purchaseorders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $purchaseorder): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
         <tr>
-          <td><?php echo e(($purchaseorder->purchaseID)); ?></td>
+          <td><?php echo e($purchaseorder->purchaseID); ?></td>
           <td><?php echo e($purchaseorder->supplier->supplierName ?? '-'); ?></td>
           <td><?php echo e(\Carbon\Carbon::parse($purchaseorder->purchaseDate)->format('d-m-Y')); ?></td>
+
+          
+          <td>
+            <?php if($purchaseorder->isReceived): ?>
+              <span class="badge bg-success">Received</span>
+            <?php else: ?>
+              <span class="badge bg-warning">Not Received</span>
+            <?php endif; ?>
+
+            <?php if($purchaseorder->isPaid): ?>
+              <span class="badge bg-success">Paid</span>
+            <?php else: ?>
+              <span class="badge bg-danger">Unpaid</span>
+            <?php endif; ?>
+          </td>
+
           <td>Rp <?php echo e(number_format($purchaseorder->totalPrice, 0, ',', '.')); ?></td>
           <td>
             <a href="<?php echo e(route('purchase.show', $purchaseorder->purchaseID)); ?>" class="btn btn-sm btn-outline-primary rounded-pill">Detail</a>
@@ -81,7 +124,7 @@
         </tr>
         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
         <tr>
-          <td colspan="5" class="text-muted">No Purchase Order</td>
+          <td colspan="6" class="text-muted">No Purchase Order</td>
         </tr>
         <?php endif; ?>
       </tbody>

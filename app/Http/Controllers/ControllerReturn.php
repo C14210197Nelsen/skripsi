@@ -149,6 +149,7 @@ class ControllerReturn extends Controller {
         if (($userRole === 'Owner' || $userRole === 'Sales') && (!$type || $type == 'sales')) {
             $sales = Salesorder::with('customer')
                 ->where('status', 1)
+                ->where('isDelivered', 1)
                 ->when($partnerPrefix === 'C' && $partnerNumericID && $type === 'sales', function ($query) use ($partnerNumericID) {
                     $query->where('Customer_customerID', $partnerNumericID);
                 })
@@ -171,6 +172,7 @@ class ControllerReturn extends Controller {
         if (($userRole === 'Owner' || $userRole === 'Purchase') && (!$type || $type == 'purchase')) {
             $purchase = Purchaseorder::with('supplier')
                 ->where('status', 1)
+                ->where('isReceived', 1)
                 ->when($partnerPrefix === 'S' && $partnerNumericID && $type === 'purchase', function ($query) use ($partnerNumericID) {
                     $query->where('Supplier_supplierID', $partnerNumericID);
                 })
@@ -331,6 +333,10 @@ class ControllerReturn extends Controller {
                 $productID = $item['product_id'];
                 $qty = $item['qty_return'];
 
+                $last = StockLedger::where('productID', $productID)->latest('created_at')->first();
+                $oldQty = $last->saldo_qty ?? 0;
+                $oldHarga = $last->saldo_harga ?? 0;
+
                 if ($request->type === 'sales') {
                     $sourceDetail = Salesdetail::where('SalesOrder_salesID', $request->source_id)
                         ->where('Product_productID', $productID)
@@ -341,7 +347,7 @@ class ControllerReturn extends Controller {
                     $sourceDetail = Purchasedetail::where('PurchaseOrder_purchaseID', $request->source_id)
                         ->where('Product_productID', $productID)
                         ->first();
-                    $costTotal = $sourceDetail->price ?? 0; // Field "Price" di Purchase = Cost Per Product
+                    $costTotal = $oldHarga/$oldQty ?? 0;
                 }
 
                 $orderedQty = $sourceDetail->quantity ?? 1;
@@ -359,9 +365,7 @@ class ControllerReturn extends Controller {
                     'subtotal' => $subtotal,
                 ]);
 
-                $last = StockLedger::where('productID', $productID)->latest('created_at')->first();
-                $oldQty = $last->saldo_qty ?? 0;
-                $oldHarga = $last->saldo_harga ?? 0;
+
 
 
                 $qtyChange = $request->type === 'sales' ? $qty : -$qty;
@@ -424,7 +428,7 @@ class ControllerReturn extends Controller {
                 }
                 // dd($sourceDetail->quantity, $sourceDetail->returned, $qty, $remainingQty, $unitHPP, $sourceDetail->cost);
                 // Update quantity
-                $sourceDetail->returned = ($sourceDetail->returned ?? 0) + $qty;
+                $sourceDetail->returned = ($sourceDetail->returned ?? 0 ) + $qty;
 
                 $sourceDetail->save();
             }

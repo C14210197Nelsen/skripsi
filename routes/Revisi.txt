@@ -1,0 +1,57 @@
+PAK GREG
+1. MAPE + Average (MEAN)
+    - ALTER TABLE sales_forecast CHANGE COLUMN RMSE MAPE DOUBLE, ADD COLUMN avg_sales DOUBLE AFTER mape;
+    - Change Type to Float
+    - train_model -> Tambahkan MAPE dan sales_avg, datatraining = 90%
+    - run_forecast -> Tambahkan MAPE dan sales_avg
+    - ControllerForecast -> Tambahkan MAPE dan sales_avg
+    - Index Inventory
+
+2. Sales Forecasting Authorization
+    - web.php
+    - Index Inventory
+    - run_forecast
+    - ControllerForecast
+
+
+
+
+BU YULIA
+1. Pengecekan SO Import (Nda boleh Duplicate):
+    - ShopeeSubmitImport
+
+2. UI SO & PO
+    - Create & Edit (SO & PO)
+    - ControllerSales
+    - ControllerAjax
+
+3. Forecasting Lead Time
+    - ALTER TABLE product CHANGE COLUMN productType LeadTime INT NULL DEFAULT 7;
+    - Create & Edit Inventory
+    - Controller Product
+
+4. Proses SO - DO - INVOICE
+    - ALTER TABLE salesorder ADD COLUMN isDelivered TINYINT(1) NOT NULL DEFAULT 0 AFTER status, ADD COLUMN isPaid TINYINT(1) NOT NULL DEFAULT 0 AFTER isDelivered;
+    - Sales Model, Controller, View Create, Edit, Show, Index
+    - ShopeeSubmitImport
+    - Controller Return
+
+
+    - ALTER TABLE `purchaseorder` ADD COLUMN `isReceived` TINYINT(1) NOT NULL DEFAULT 0 AFTER `status`, ADD COLUMN `receivedAt` DATETIME NULL DEFAULT NULL AFTER `isReceived`, ADD COLUMN `isPaid` TINYINT(1) NOT NULL DEFAULT 0 AFTER `receivedAt`, ADD COLUMN `paidAt` DATETIME NULL DEFAULT NULL AFTER `isPaid`;
+    - ALTER TABLE purchaseorder ADD COLUMN description TEXT NULL AFTER totalPrice;
+    - Purchase Model, Controller, View Createa, Edit, Show, Index
+    - Controller Return
+
+    - Controller Home
+
+5. Forecasting -> PO
+    - View Index Inventory
+    - Route
+    - ControllerProduct
+    - StockLedger
+    - Controller Purchase
+    - View shortage Inventory
+    - View Create Purchase
+
+6. Payment Gateway
+    - ALTER TABLE salesorder ADD COLUMN payment_type ENUM('Cash', 'Transfer', 'QRIS') DEFAULT NULL AFTER description, ADD COLUMN amount_paid DECIMAL(15,2) DEFAULT 0 AFTER payment_type, ADD COLUMN change_amount DECIMAL(15,2) DEFAULT 0 AFTER amount_paid;

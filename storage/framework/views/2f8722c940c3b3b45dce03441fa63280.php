@@ -54,9 +54,24 @@
         <div class="col-md-2">
           <input type="month" name="to" class="form-control form-control-sm rounded-pill" value="<?php echo e(request('to')); ?>">
         </div>
+        <div class="col-md-1">
+          <select name="delivered" class="form-select form-select-sm rounded-pill">
+            <option value="">Delivered?</option>
+            <option value="1" <?php echo e(request('delivered') === '1' ? 'selected' : ''); ?>>Delivered</option>
+            <option value="0" <?php echo e(request('delivered') === '0' ? 'selected' : ''); ?>>Not Delivered</option>
+          </select>
+        </div>
+        
+        <div class="col-md-1">
+          <select name="paid" class="form-select form-select-sm rounded-pill">
+            <option value="">Paid?</option>
+            <option value="1" <?php echo e(request('paid') === '1' ? 'selected' : ''); ?>>Paid</option>
+            <option value="0" <?php echo e(request('paid') === '0' ? 'selected' : ''); ?>>Unpaid</option>
+          </select>
+        </div>
         <div class="col-md-2 d-flex gap-2">
           <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill">Filter</button>
-          <?php if(request('customer_id') || request('from') || request('to')): ?>
+          <?php if(request('customer_id') || request('from') || request('to') || request('delivered') !== null || request('paid') !== null): ?>
             <a href="<?php echo e(route('sales.index')); ?>" class="btn btn-outline-secondary btn-sm rounded-pill">Reset</a>
           <?php endif; ?>
         </div>
@@ -69,10 +84,11 @@
     <table class="table table-striped table-hover align-middle text-center shadow-sm">
       <thead class="table-dark text-white">
         <tr>
-          <th style="width: 5%;">Doc No</th>
-          <th style="width: 35%;">Customer</th>
-          <th style="width: 20%;">Date</th>
-          <th style="width: 20%;">Total</th>
+          <th style="width: 10%;">Doc No</th>
+          <th style="width: 20%;">Customer</th>
+          <th style="width: 15%;">Date</th>
+          <th style="width: 20%;">Status</th>
+          <th style="width: 15%;">Total</th>
           <th style="width: 20%;">Action</th>
         </tr>
       </thead>
@@ -82,6 +98,19 @@
             <td><?php echo e(($salesorder->salesID)); ?></td>
             <td><?php echo e($salesorder->customer->customerName ?? '-'); ?></td>
             <td><?php echo e(\Carbon\Carbon::parse($salesorder->salesDate)->format('d-m-Y')); ?></td>
+            <td>
+              <?php if($salesorder->isDelivered): ?>
+                <span class="badge bg-success">Delivered</span>
+              <?php else: ?>
+                <span class="badge bg-warning">Not Delivered</span>
+              <?php endif; ?>
+
+              <?php if($salesorder->isPaid): ?>
+                <span class="badge bg-success">Paid</span>
+              <?php else: ?>
+                <span class="badge bg-danger">Unpaid</span>
+              <?php endif; ?>
+            </td>
             <td>Rp <?php echo e(number_format($salesorder->totalPrice, 0, ',', '.')); ?></td>
             <td>
               <a href="<?php echo e(route('sales.show', $salesorder->salesID)); ?>" class="btn btn-sm btn-outline-primary rounded-pill">Detail</a>

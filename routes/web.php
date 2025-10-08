@@ -51,6 +51,12 @@ Route::middleware(['auth', 'role:Owner,Purchase,Sales'])->group(function () {
             '/rekapan'  => ControllerRekapan::class,
         ]);
 
+            // -------------------- FORECAST --------------------
+        Route::middleware('role:Owner')->prefix('forecast')->group(function () {
+            Route::post('/run_forecast/{productID}', [ControllerForecast::class, 'runForecast']);
+            Route::post('/train_model/{productID}', [ControllerForecast::class, 'requestForecast'])->name('forecast.request');
+        });
+
     });
     
 
@@ -65,6 +71,7 @@ Route::middleware(['auth', 'role:Owner,Purchase,Sales'])->group(function () {
         Route::resource('/supplier', ControllerSupplier::class);
         
         // Inventory
+        Route::get('/inventory/shortage', [ControllerProduct::class, 'shortage'])->name('inventory.shortage');
         Route::get('/inventory/deleted', [ControllerProduct::class, 'deleted'])->name('inventory.deleted');
         Route::resource('/inventory', ControllerProduct::class)->parameters(['inventory' => 'product']);
         Route::get('/inventory/{productID}/stockledger', [ControllerStockLedger::class, 'show'])->name('stockledger.show');
@@ -92,8 +99,6 @@ Route::middleware(['auth', 'role:Owner,Purchase,Sales'])->group(function () {
     // -------------------- FORECAST --------------------
     Route::middleware('role:Owner,Sales,Purchase')->prefix('forecast')->group(function () {
         Route::get('/{productID}', [ControllerForecast::class, 'getForecast']);
-        Route::post('/run_forecast/{productID}', [ControllerForecast::class, 'runForecast']);
-        Route::post('/train_model/{productID}', [ControllerForecast::class, 'requestForecast'])->name('forecast.request');
         Route::get('/status/{jobId}', [ControllerForecast::class, 'checkStatus'])->name('forecast.status');
     });
     Route::resource('/forecast', ControllerForecast::class);
